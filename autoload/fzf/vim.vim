@@ -209,6 +209,7 @@ function! fzf#vim#files(dir, ...)
   else
     let args.options .= ' --prompt '.shellescape(pathshorten(getcwd())).'/'
   endif
+  let args.options .= " --preview 'highlight -O ansi -n --failsafe 2>/dev/null {}'"
 
   return s:fzf('files', fzf#vim#wrap(args), a:000)
 endfunction
@@ -430,7 +431,8 @@ function! fzf#vim#gitfiles(args, ...)
   \ 'source':  'git -c color.status=always status --short',
   \ 'dir':     root,
   \ 'sink*':   s:function('s:git_status_sink'),
-  \ 'options': '--ansi --multi --nth 2..,.. --prompt "GitFiles?> "'
+  \ 'options': '--ansi --multi --nth 2..,.. --prompt "GitStatus> " '.
+  \            "--preview 'git diff --color=always $(cut -d \" \" -f2 <<< {})'"
   \}), a:000)
 endfunction
 
@@ -498,7 +500,8 @@ function! fzf#vim#buffers(...)
   return s:fzf('buffers', fzf#vim#wrap({
   \ 'source':  reverse(bufs),
   \ 'sink*':   s:function('s:bufopen'),
-  \ 'options': '+m -x --tiebreak=index --ansi -d "\t" -n 2,1..2 --prompt="Buf> "',
+  \ 'options': '+m -x --tiebreak=index --ansi -d "\t" -n 2,1..2 --prompt="Buf> " '.
+  \            "--preview 'highlight -O ansi -n --failsafe 2>/dev/null $(cut -d% -f2 <<< {})'",
   \}), a:000)
 endfunction
 
@@ -545,11 +548,13 @@ endfunction
 
 " ag command suffix, [options]
 function! fzf#vim#ag_raw(command_suffix, ...)
+  let context = &lines / 2
   return s:fzf('ag', fzf#vim#wrap({
-  \ 'source':  'ag --nogroup --column --color '.a:command_suffix,
+  \ 'source':  "ag --nogroup --column --color -G '\.(go)$' ".a:command_suffix,
   \ 'sink*':    s:function('s:ag_handler'),
   \ 'options': '--ansi --delimiter : --nth 4..,.. --prompt "Ag> " '.
   \            '--multi --bind alt-a:select-all,alt-d:deselect-all '.
+  \            "--preview 'highlight -O ansi -n --failsafe 2>/dev/null $(cut -d: -f1 <<< {}) | grep -C ".context." --color=always \" \\+$(cut -d: -f2 <<< {}) \" | grep -C ".context." --color=always".a:command_suffix."' ".
   \            '--color hl:68,hl+:110'}), a:000)
 endfunction
 
