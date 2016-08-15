@@ -432,7 +432,7 @@ function! fzf#vim#gitfiles(args, ...)
   \ 'dir':     root,
   \ 'sink*':   s:function('s:git_status_sink'),
   \ 'options': '--ansi --multi --nth 2..,.. --prompt "GitStatus> " '.
-  \            "--preview 'git diff --color=always $(cut -d \" \" -f2 <<< {})'"
+  \            "--preview 'git diff HEAD --color=always $(cut -d \" \" -f3 <<< {})'"
   \}), a:000)
 endfunction
 
