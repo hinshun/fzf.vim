@@ -506,27 +506,26 @@ function! fzf#vim#buffers(...)
 endfunction
 
 " ------------------------------------------------------------------
-" Ag
+" Rg
 " ------------------------------------------------------------------
-function! s:ag_to_qf(line)
+function! s:rg_to_qf(line)
   let parts = split(a:line, ':')
   return {'filename': &acd ? fnamemodify(parts[0], ':p') : parts[0], 'lnum': parts[1], 'col': parts[2],
         \ 'text': join(parts[3:], ':')}
 endfunction
 
-function! s:ag_handler(lines)
+function! s:rg_handler(lines)
   if len(a:lines) < 2
     return
   endif
 
   let cmd = get(get(g:, 'fzf_action', s:default_action), a:lines[0], 'e')
-  let list = map(a:lines[1:], 's:ag_to_qf(v:val)')
+  let list = map(a:lines[1:], 's:rg_to_qf(v:val)')
 
   let first = list[0]
   try
     call s:open(cmd, first.filename)
-    execute first.lnum
-    execute 'normal!' first.col.'|zz'
+    execute 'cal cursor('.first.lnum.','.first.col.')'
   catch
   endtry
 
@@ -537,24 +536,25 @@ function! s:ag_handler(lines)
   endif
 endfunction
 
-" query, [[ag options], options]
-function! fzf#vim#ag(query, ...)
-  let query = empty(a:query) ? '^(?=.)' : a:query
+" query, [[rg options], options]
+function! fzf#vim#rg(query, ...)
+  if empty(a:query)
+    return
+  endif
   let args = copy(a:000)
-  let ag_opts = len(args) > 1 ? remove(args, 0) : ''
-  let command = ag_opts . ' ' . s:q1(query)
-  return call('fzf#vim#ag_raw', insert(args, command, 0))
+  let command = substitute(a:query, '"', '\"', 'g')
+  return call('fzf#vim#rg_raw', insert(args, command, 0))
 endfunction
 
-" ag command suffix, [options]
-function! fzf#vim#ag_raw(command_suffix, ...)
-  let context = &lines / 2
-  return s:fzf('ag', fzf#vim#wrap({
-  \ 'source':  "ag --nogroup --column --color -G '\.(go)$' ".a:command_suffix,
-  \ 'sink*':    s:function('s:ag_handler'),
-  \ 'options': '--ansi --delimiter : --nth 4..,.. --prompt "Ag> " '.
+" rg command suffix, [options]
+function! fzf#vim#rg_raw(command_suffix, ...)
+  let context = &lines
+  return s:fzf('rg', fzf#vim#wrap({
+  \ 'source':  "rg --no-heading -n --column --color always -t go ".a:command_suffix,
+  \ 'sink*':    s:function('s:rg_handler'),
+  \ 'options': '--ansi --delimiter : --nth 4..,.. --prompt "Rg> " '.
   \            '--multi --bind alt-a:select-all,alt-d:deselect-all '.
-  \            "--preview 'highlight -O ansi -n --failsafe 2>/dev/null $(cut -d: -f1 <<< {}) | grep -C ".context." --color=always \" \\+$(cut -d: -f2 <<< {}) \" | grep -C ".context." --color=always".a:command_suffix."' ".
+  \            "--preview 'highlight -O ansi -n --failsafe 2>/dev/null $(cut -d: -f1 <<< {}) | rg -B $(( $(cut -d: -f2 <<< {}) < (".context." / 2) ? $(cut -d: -f2 <<< {}) : (".context." / 2) )) -A $(( $(cut -d: -f2 <<< {}) < (".context." / 2) ? (".context." - $(cut -d: -f2 <<< {})) : (".context." / 2) )) --color=always -e \" \+$(cut -d: -f2 <<< {}) \" | rg -C ".context." --color=always ".a:command_suffix."' ".
   \            '--color hl:68,hl+:110'}), a:000)
 endfunction
 

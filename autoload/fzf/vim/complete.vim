@@ -54,7 +54,7 @@ endfunction
 " ----------------------------------------------------------------------------
 " <plug>(fzf-complete-path)
 " <plug>(fzf-complete-file)
-" <plug>(fzf-complete-file-ag)
+" <plug>(fzf-complete-file-rg)
 " ----------------------------------------------------------------------------
 function! s:file_split_prefix(prefix)
   let expanded = expand(a:prefix)
