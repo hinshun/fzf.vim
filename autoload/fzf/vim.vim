@@ -209,7 +209,7 @@ function! fzf#vim#files(dir, ...)
   else
     let args.options .= ' --prompt '.shellescape(pathshorten(getcwd())).'/'
   endif
-  let args.options .= " --preview 'highlight -O ansi -n --failsafe 2>/dev/null {}'"
+  let args.options .= " --preview 'chroma --formatter terminal16m --style hinshun {}'"
 
   return s:fzf('files', fzf#vim#wrap(args), a:000)
 endfunction
@@ -501,7 +501,7 @@ function! fzf#vim#buffers(...)
   \ 'source':  reverse(bufs),
   \ 'sink*':   s:function('s:bufopen'),
   \ 'options': '+m -x --tiebreak=index --ansi -d "\t" -n 2,1..2 --prompt="Buf> " '.
-  \            "--preview 'highlight -O ansi -n --failsafe 2>/dev/null $(cut -d% -f2 <<< {})'",
+  \            "--preview 'chroma --formatter terminal16m --style hinshun $(cut -d% -f2 <<< {})'",
   \}), a:000)
 endfunction
 
@@ -554,7 +554,7 @@ function! fzf#vim#rg_raw(command_suffix, ...)
   \ 'sink*':    s:function('s:rg_handler'),
   \ 'options': '--ansi --delimiter : --nth 4..,.. --prompt "Rg> " '.
   \            '--multi --bind alt-a:select-all,alt-d:deselect-all '.
-  \            "--preview 'highlight -O ansi -n --failsafe 2>/dev/null $(cut -d: -f1 <<< {}) | rg -B $(( $(cut -d: -f2 <<< {}) < (".context." / 2) ? $(cut -d: -f2 <<< {}) : (".context." / 2) )) -A $(( $(cut -d: -f2 <<< {}) < (".context." / 2) ? (".context." - $(cut -d: -f2 <<< {})) : (".context." / 2) )) --color=always -e \" \+$(cut -d: -f2 <<< {}) \" | rg -C ".context." --color=always ".a:command_suffix."' ".
+  \            "--preview 'chroma --formatter terminal16m --style hinshun $(cut -d: -f1 <<< {}) | rg -B $(( $(cut -d: -f2 <<< {}) < (".context." / 2) ? $(cut -d: -f2 <<< {}) : (".context." / 2) )) -A $(( $(cut -d: -f2 <<< {}) < (".context." / 2) ? (".context." - $(cut -d: -f2 <<< {})) : (".context." / 2) )) --color=always -e \" \+$(cut -d: -f2 <<< {}) \" | rg -C ".context." --color=always ".a:command_suffix."' ".
   \            '--color hl:68,hl+:110'}), a:000)
 endfunction
 
