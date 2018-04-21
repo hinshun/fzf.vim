@@ -136,6 +136,10 @@ function! s:strip(str)
   return substitute(a:str, '^\s*\|\s*$', '', 'g')
 endfunction
 
+function! s:strip_quote(str)
+  return substitute(a:str, "'", '', 'g')
+endfunction
+
 function! s:chomp(str)
   return substitute(a:str, '\n*$', '', 'g')
 endfunction
@@ -295,7 +299,7 @@ function! fzf#vim#files(dir, ...)
     let dir = s:shortpath()
   endif
 
-  let args.options = ['-m', '--prompt', strwidth(dir) < &columns / 2 - 20 ? dir : '> ']
+  let args.options = ['-m', '--preview', "'".fzf#shellescape('chroma --formatter terminal16m --style hinshun {}')."'", '--prompt', strwidth(dir) < &columns / 2 - 20 ? dir : '> ']
   call s:merge_opts(args, get(g:, 'fzf_files_options', []))
   return s:fzf('files', args, a:000)
 endfunction
@@ -602,14 +606,14 @@ function! fzf#vim#buffers(...)
   return s:fzf('buffers', {
   \ 'source':  map(s:buflisted_sorted(), 's:format_buffer(v:val)'),
   \ 'sink*':   s:function('s:bufopen'),
-  \ 'options': ['+m', '-x', '--tiebreak=index', '--header-lines=1', '--ansi', '-d', '\t', '-n', '2,1..2', '--prompt', 'Buf> ', '--query', query]
+  \ 'options': ['+m', '-x', '--tiebreak=index', '--header-lines=1', '--ansi', '-d', '\t', '-n', '2,1..2', '--prompt', 'Buf> ', '--preview', "'".fzf#shellescape('chroma --formatter terminal16m --style hinshun $(cut -d "	" -f2 <<< {})')."'", '--query', query]
   \}, args)
 endfunction
 
 " ------------------------------------------------------------------
-" Ag
+" Rg
 " ------------------------------------------------------------------
-function! s:ag_to_qf(line, with_column)
+function! s:rg_to_qf(line, with_column)
   let parts = split(a:line, ':')
   let text = join(parts[(a:with_column ? 3 : 2):], ':')
   let dict = {'filename': &acd ? fnamemodify(parts[0], ':p') : parts[0], 'lnum': parts[1], 'text': text}
@@ -619,13 +623,13 @@ function! s:ag_to_qf(line, with_column)
   return dict
 endfunction
 
-function! s:ag_handler(lines, with_column)
+function! s:rg_handler(lines, with_column)
   if len(a:lines) < 2
     return
   endif
 
   let cmd = s:action_for(a:lines[0], 'e')
-  let list = map(filter(a:lines[1:], 'len(v:val)'), 's:ag_to_qf(v:val, a:with_column)')
+  let list = map(filter(a:lines[1:], 'len(v:val)'), 's:rg_to_qf(v:val, a:with_column)')
   if empty(list)
     return
   endif
@@ -648,24 +652,24 @@ function! s:ag_handler(lines, with_column)
   endif
 endfunction
 
-" query, [[ag options], options]
-function! fzf#vim#ag(query, ...)
+" query, [[rg options], options]
+function! fzf#vim#rg(query, ...)
   if type(a:query) != s:TYPE.string
     return s:warn('Invalid query argument')
   endif
   let query = empty(a:query) ? '^(?=.)' : a:query
   let args = copy(a:000)
-  let ag_opts = len(args) > 1 && type(args[0]) == s:TYPE.string ? remove(args, 0) : ''
-  let command = ag_opts . ' ' . fzf#shellescape(query)
-  return call('fzf#vim#ag_raw', insert(args, command, 0))
+  let rg_opts = len(args) > 1 && type(args[0]) == s:TYPE.string ? remove(args, 0) : ''
+  let command = rg_opts . ' ' . fzf#shellescape(query)
+  return call('fzf#vim#rg_raw', insert(args, command, 0))
 endfunction
 
-" ag command suffix, [options]
-function! fzf#vim#ag_raw(command_suffix, ...)
-  if !executable('ag')
-    return s:warn('ag is not found')
+" rg command suffix, [options]
+function! fzf#vim#rg_raw(command_suffix, ...)
+  if !executable('rg')
+    return s:warn('rg is not found')
   endif
-  return call('fzf#vim#grep', extend(['ag --nogroup --column --color '.a:command_suffix, 1], a:000))
+  return call('fzf#vim#grep', extend(['rg --no-heading -n --column --color always -t go '.a:command_suffix, 1], a:000))
 endfunction
 
 " command, with_column, [options]
@@ -680,19 +684,23 @@ function! fzf#vim#grep(grep_command, with_column, ...)
   let words   = empty(words) ? ['grep'] : words
   let name    = join(words, '-')
   let capname = join(map(words, 'toupper(v:val[0]).v:val[1:]'), '')
+  let context = &lines
   let opts = {
   \ 'source':  a:grep_command,
   \ 'column':  a:with_column,
   \ 'options': ['--ansi', '--prompt', capname.'> ',
   \             '--multi', '--bind', 'alt-a:select-all,alt-d:deselect-all',
+  \             '--preview', "'".fzf#shellescape("chroma --formatter terminal16m --style hinshun $(cut -d: -f1 <<< {}) | rg --color=always --passthru ".s:strip_quote(split(a:grep_command)[8]))."'",
   \             '--color', 'hl:68,hl+:110']
   \}
   function! opts.sink(lines)
-    return s:ag_handler(a:lines, self.column)
+    return s:rg_handler(a:lines, self.column)
   endfunction
   let opts['sink*'] = remove(opts, 'sink')
   return s:fzf(name, opts, a:000)
 endfunction
+
+  " \             '--preview', "'".fzf#shellescape("chroma --formatter terminal16m --style hinshun $(cut -d: -f1 <<< {}) | rg --color=always --passthru ".a:grep_command)."'",
 
 " ------------------------------------------------------------------
 " BTags
